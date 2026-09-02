@@ -1,0 +1,6 @@
+node_modules
+.git
+*.md
+dev-server.py
+package.json
+package-lock.json
