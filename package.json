@@ -1,0 +1,21 @@
+{
+  "name": "demo_1",
+  "version": "1.0.0",
+  "description": "ぷよぷよ／1024（同色連結）／スイカゲームの要素を組み合わせた、3Dグリッド積み上げ型パズルゲームのブラウザデモ。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hanzawa-shu/3D-Link-Merge.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/hanzawa-shu/3D-Link-Merge/issues"
+  },
+  "homepage": "https://github.com/hanzawa-shu/3D-Link-Merge#readme"
+}
