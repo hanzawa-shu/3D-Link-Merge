@@ -1,0 +1,317 @@
+* {
+  box-sizing: border-box;
+  /* iOS Safari は viewport の user-scalable=no を無視するため、
+     ダブルタップによるページ拡大はこちらで止める。touch-action は継承されないので
+     body だけでは効かず、全要素に指定する必要がある。 */
+  touch-action: manipulation;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #141428;
+  color: #f2f2f8;
+  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+}
+
+#game-canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+  /* OrbitControls が同じ値をインラインで設定するが、
+     上の全要素指定に上書きされないよう明示しておく。 */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.screen.hidden {
+  display: none;
+}
+
+.screen > * {
+  pointer-events: auto;
+}
+
+#screen-title, #screen-rules, #screen-settings, #screen-gameover {
+  background: rgba(10, 10, 24, 0.72);
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.4rem;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  font-size: 1rem;
+  padding: 0.7em 1.6em;
+  border-radius: 999px;
+  border: none;
+  background: #4da6ff;
+  color: #0a0a18;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.high-score {
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+
+.rules-content, .settings-content {
+  max-width: min(560px, 86vw);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 1.4em 1.8em;
+  line-height: 1.8;
+  font-size: 0.92rem;
+  text-align: left;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.rules-content dt {
+  font-weight: 700;
+  color: #ffd93d;
+  margin-top: 0.6em;
+}
+
+.rules-content dd {
+  margin: 0 0 0.4em 0;
+}
+
+#screen-settings label {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  font-size: 0.95rem;
+}
+
+.settings-note {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin: 0.4em 0 0 0;
+}
+
+/* ---- HUD ---- */
+
+#screen-hud {
+  justify-content: flex-start;
+  align-items: stretch;
+  pointer-events: none;
+}
+
+.hud-top {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.1rem;
+  pointer-events: none;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+
+.hud-info {
+  display: flex;
+  align-items: center;
+  gap: 1.4em;
+}
+
+.next-color {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.menu-btn {
+  pointer-events: auto;
+  padding: 0.35em 0.7em;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.swatch {
+  display: inline-block;
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.7);
+}
+
+.hud-highlight-row {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  pointer-events: auto;
+}
+
+.hud-highlight-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.highlight-btn {
+  --swatch-color: #ffffff;
+  background: var(--swatch-color);
+  color: #0a0a18;
+  padding: 0.4em 0.9em;
+  border-radius: 999px;
+  opacity: 0.55;
+  font-size: 0.85rem;
+}
+
+.highlight-btn.active {
+  opacity: 1;
+  outline: 2px solid white;
+}
+
+.highlight-reset-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: #f2f2f8;
+  padding: 0.4em 0.8em;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+/* ---- 円形パッド（SVG） ---- */
+
+.hud-pad {
+  position: fixed;
+  right: 4px;
+  bottom: 4px;
+  width: clamp(150px, 46vw, 200px);
+  height: auto;
+  /* 余白部分ではカメラ操作を邪魔しない */
+  pointer-events: none;
+  touch-action: manipulation;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
+}
+
+.pad-seg {
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* stroke を同色で重ねて角を丸める。この分セグメントが全方向に太るため、
+     半径の小さい内周ほど角度換算の食い込みが大きい。stroke を太くしすぎると
+     隣のセグメントと接触するので、隙間の角度と合わせて決めること。 */
+  stroke-linejoin: round;
+  stroke-width: 6;
+  paint-order: stroke fill;
+  transition: opacity 0.12s ease;
+}
+
+.pad-dir {
+  fill: #e9e9ef;
+  stroke: #e9e9ef;
+}
+
+.pad-drop {
+  fill: #f2efa0;
+  stroke: #f2efa0;
+}
+
+.pad-rotate {
+  fill: #e9e9ef;
+  stroke: #e9e9ef;
+}
+
+.pad-seg:active {
+  opacity: 0.6;
+}
+
+.pad-seg.is-disabled {
+  opacity: 0.3;
+  pointer-events: none;
+  cursor: default;
+}
+
+.pad-label {
+  pointer-events: none;
+  fill: #14142a;
+  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* 矢印グリフは字面が縦に長く、字送りも広い。セグメントの縁や中央の穴に
+   食い込まないよう、方向キーと回転は本文より小さめに詰めて置く。 */
+.pad-dir-label {
+  font-size: 26px;
+}
+
+.pad-drop-label {
+  font-size: 28px;
+  letter-spacing: 3px;
+}
+
+.pad-rotate-label {
+  font-size: 21px;
+  letter-spacing: -3px;
+}
+
+.pad-rotate-label.is-disabled {
+  opacity: 0.3;
+}
+
+@media (max-width: 640px) {
+  .rules-content { font-size: 0.85rem; }
+  .hud-top { font-size: 0.95rem; }
+  .hud-highlight-row { top: 58px; gap: 6px; }
+  .hud-highlight-buttons { gap: 6px; }
+  .highlight-btn { padding: 0.3em 0.65em; font-size: 0.75rem; }
+  .highlight-reset-btn { padding: 0.3em 0.6em; font-size: 0.7rem; }
+}
+
+/* 横向き・低い画面では画面高さ側を基準にする */
+@media (max-height: 520px) {
+  .hud-pad { width: clamp(140px, 38vh, 190px); }
+}

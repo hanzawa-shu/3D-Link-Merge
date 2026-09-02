@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>3D連結マージ デモ</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <div id="screen-title" class="screen">
+    <h1>3D連結マージ</h1>
+    <div class="high-score">ハイスコア: <span id="title-highscore">0</span></div>
+    <button id="btn-start">はじめる</button>
+    <button id="btn-rules">あそびかた</button>
+    <button id="btn-settings">せってい</button>
+  </div>
+
+  <div id="screen-rules" class="screen hidden">
+    <h2>あそびかた</h2>
+    <dl class="rules-content">
+      <dt>基本</dt>
+      <dd>盤面のマスに、カーソルで選んだ列へオブジェクトを落として積み上げます。時間制限はありません。盤面サイズ・色の段階数は「せってい」で変更できます。</dd>
+      <dt>形状と回転</dt>
+      <dd>黄以降のオブジェクトは複数マス・複数段にまたがる立体形状です。パッド上側の「↑↓」（縦回転）「⇄」（横回転）ボタンで向きを変えられます（白は1マスなので回転不要）。</dd>
+      <dt>地形への配置</dt>
+      <dd>凹凸のある地形にも、マスごとに高さを合わせて着地できます。ただし隣り合う列同士の高さの差が大きすぎると置けません（つながっている部分同士が近ければ、離れた部分に多少の高低差があっても置けます）。配置予定地には実際の形の半透明プレビューが表示され、置けない場合は赤く表示されます。</dd>
+      <dt>紐（ボンド）</dt>
+      <dd>1つのオブジェクトの中で、マス同士が離れていたり高さが違ったりする部分は、紐でつながって表示されます。これは1つの塊であることを示すだけの見た目上の演出です。</dd>
+      <dt>合体</dt>
+      <dd>同じ色が上下前後左右（斜めなし）に4つ以上つながると、自動で1段上の色のオブジェクト1個に変わります。4個より多くつながるほどスコアが伸びます。</dd>
+      <dt>色の段階</dt>
+      <dd>白 → 黄 → 赤 → 青 → 緑 → 紫 → 橙 → 黒（設定した段階数ぶん）。最後の段階が4つ以上つながると消滅し、特大スコアが入ります。</dd>
+      <dt>視認性</dt>
+      <dd>ドラッグでカメラを自由に回転・ズームできます。画面上部の色ボタンを押すと、その色以外を半透明にして見やすくできます。</dd>
+      <dt>ゲームオーバー</dt>
+      <dd>どの列にも置けなくなったら終了です。ハイスコアは自動で保存されます。</dd>
+    </dl>
+    <button id="btn-rules-back">もどる</button>
+  </div>
+
+  <div id="screen-settings" class="screen hidden">
+    <h2>せってい</h2>
+    <div class="settings-content">
+      <label>
+        盤面サイズ
+        <input type="range" id="setting-boardsize" min="3" max="6" step="1" value="4" />
+        <span id="setting-boardsize-value">4</span>
+      </label>
+      <label>
+        カラー段階数
+        <input type="range" id="setting-colorlevels" min="4" max="8" step="1" value="7" />
+        <span id="setting-colorlevels-value">7</span>
+      </label>
+      <label>
+        列の高さ上限
+        <input type="range" id="setting-maxheight" min="4" max="12" step="1" value="5" />
+        <span id="setting-maxheight-value">5</span>
+      </label>
+      <p class="settings-note">盤面サイズ・カラー段階数の変更は次のゲーム開始時から反映されます。</p>
+    </div>
+    <button id="btn-reset-highscore">ハイスコアをリセット</button>
+    <button id="btn-settings-back">もどる</button>
+  </div>
+
+  <div id="screen-hud" class="screen hidden">
+    <div class="hud-top">
+      <button id="btn-menu" class="menu-btn" title="中断メニュー">☰</button>
+      <div class="hud-info">
+        <div class="score">スコア: <span id="hud-score">0</span></div>
+        <div class="next-color">つぎ: <span id="hud-next-swatch" class="swatch"></span></div>
+      </div>
+    </div>
+    <div class="hud-highlight-row">
+      <div id="hud-highlight-buttons" class="hud-highlight-buttons"></div>
+      <button id="hud-highlight-reset" class="highlight-reset-btn" title="ハイライトをリセット">リセット</button>
+    </div>
+    <svg class="hud-pad" viewBox="-140 -140 280 280" role="group" aria-label="操作パッド">
+      <defs>
+        <path id="drop-text-path" d="M -106.0 -47.2 A 116 116 0 0 0 -58.0 100.5" />
+      </defs>
+
+      <!-- 十字キー -->
+      <path id="dpad-up" class="pad-seg pad-dir" d="M -45.2 -61.1 A 76 76 0 0 1 45.2 -61.1 L 21.4 -28.9 A 36 36 0 0 0 -21.4 -28.9 Z" role="button" aria-label="上へ移動" />
+      <path id="dpad-right" class="pad-seg pad-dir" d="M 61.1 -45.2 A 76 76 0 0 1 61.1 45.2 L 28.9 21.4 A 36 36 0 0 0 28.9 -21.4 Z" role="button" aria-label="右へ移動" />
+      <path id="dpad-down" class="pad-seg pad-dir" d="M 45.2 61.1 A 76 76 0 0 1 -45.2 61.1 L -21.4 28.9 A 36 36 0 0 0 21.4 28.9 Z" role="button" aria-label="下へ移動" />
+      <path id="dpad-left" class="pad-seg pad-dir" d="M -61.1 45.2 A 76 76 0 0 1 -61.1 -45.2 L -28.9 -21.4 A 36 36 0 0 0 -28.9 21.4 Z" role="button" aria-label="左へ移動" />
+      <g class="pad-label pad-dir-label">
+        <text x="0" y="-56">↑</text>
+        <text x="56" y="0">→</text>
+        <text x="0" y="56">↓</text>
+        <text x="-56" y="0">←</text>
+      </g>
+
+      <!-- 落とす -->
+      <path id="dpad-confirm" class="pad-seg pad-drop" d="M -58.7 120.4 A 134 134 0 0 1 -118.3 -62.9 L -86.5 -46.0 A 98 98 0 0 0 -43.0 88.1 Z" role="button" aria-label="落とす" />
+      <text class="pad-label pad-drop-label">
+        <textPath href="#drop-text-path" startOffset="50%">DROP</textPath>
+      </text>
+
+      <!-- 回転 -->
+      <path id="dpad-rotate-pitch" class="pad-seg pad-rotate" d="M -102.6 -86.1 A 134 134 0 0 1 -36.9 -128.8 L -27.0 -94.2 A 98 98 0 0 0 -75.1 -63.0 Z" role="button" aria-label="縦回転" />
+      <path id="dpad-rotate-yaw" class="pad-seg pad-rotate" d="M -9.3 -133.7 A 134 134 0 0 1 82.5 -105.6 L 60.3 -77.2 A 98 98 0 0 0 -6.8 -97.8 Z" role="button" aria-label="横回転" />
+      <g class="pad-label pad-rotate-label">
+        <text id="pad-label-pitch" x="-63.2" y="-97.3">↑↓</text>
+        <text id="pad-label-yaw" x="33.9" y="-110.9">⇄</text>
+      </g>
+    </svg>
+  </div>
+
+  <div id="screen-pause" class="screen hidden">
+    <h2>一時停止</h2>
+    <button id="btn-resume">ゲームに戻る</button>
+    <button id="btn-quit-title">タイトルへ戻る</button>
+  </div>
+
+  <div id="screen-gameover" class="screen hidden">
+    <h2>ゲームオーバー</h2>
+    <div>スコア: <span id="gameover-score">0</span></div>
+    <div class="high-score">ハイスコア: <span id="gameover-highscore">0</span></div>
+    <button id="btn-retry">もう一度</button>
+    <button id="btn-gameover-title">タイトルへ</button>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
